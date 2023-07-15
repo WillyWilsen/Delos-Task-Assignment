@@ -161,7 +161,7 @@ func (h *PondHandler) GetPondById(c *gin.Context) {
 
     // Empty pond
     if pond == nil {
-        c.JSON(http.StatusInternalServerError, gin.H{
+        c.JSON(http.StatusNotFound, gin.H{
             "code": http.StatusNotFound,
             "status": "error",
             "message": "Data Not Found",

@@ -147,7 +147,7 @@ func (h *FarmHandler) GetFarmById(c *gin.Context) {
 
     // Empty farm
     if farm == nil {
-        c.JSON(http.StatusInternalServerError, gin.H{
+        c.JSON(http.StatusNotFound, gin.H{
             "code": http.StatusNotFound,
             "status": "error",
             "message": "Data Not Found",

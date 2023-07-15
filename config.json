@@ -3,10 +3,10 @@
         "http_port": "8001"
     },
     "database": {
-        "hostname": "localhost",
+        "hostname": "db",
         "port": 3306,
-        "username": "root",
-        "password": "willy",
-        "database_name": "delos"
+        "username": "delos",
+        "password": "delos",
+        "database_name": "delos_db"
     }
 }
