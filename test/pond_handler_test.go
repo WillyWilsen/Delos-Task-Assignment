@@ -14,21 +14,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateFarm(t *testing.T) {
+func TestCreatePond(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.POST("/farm", farmHandler.CreateFarm)
+	router.POST("/pond", pondHandler.CreatePond)
+
+	// Create a farm for testing
+	farmRepo.Create(&model.Farm{
+		ID:   1,
+		Name: "Farm 1",
+	})
 
 	// Create a test request
-	requestBody := strings.NewReader(`{"name": "Farm 1"}`)
-	request, _ := http.NewRequest("POST", "/farm", requestBody)
+	requestBody := strings.NewReader(`{"name": "Pond 1", "farm_id": 1}`)
+	request, _ := http.NewRequest("POST", "/pond", requestBody)
 	request.Header.Set("User-Agent", "Test Agent")
 	request.Header.Set("Content-Type", "application/json")
 	responseRecorder := httptest.NewRecorder()
@@ -43,10 +50,11 @@ func TestCreateFarm(t *testing.T) {
 	expectedResponse := gin.H{
 		"code":    http.StatusOK,
 		"status":  "success",
-		"message": "New farm created successfully",
+		"message": "New pond created successfully",
 		"data": map[string]interface {}{
 			"id":   1,
-			"name": "Farm 1",
+			"name": "Pond 1",
+			"farm_id": 1,
 		},
 	}
 	actualResponse := gin.H{}
@@ -64,31 +72,36 @@ func TestCreateFarm(t *testing.T) {
 			id := int(idFloat)
 			data["id"] = id
 		}
+		if farmIdFloat, ok := data["farm_id"].(float64); ok {
+			farmId := int(farmIdFloat)
+			data["farm_id"] = farmId
+		}
 	}
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResponse, actualResponse)
 
-	// Check if the farm was created in the repository
-	farms, _ := farmRepo.Get()
-	assert.Len(t, farms, 1)
-	assert.Equal(t, "Farm 1", farms[0].Name)
+	// Check if the pond was created in the repository
+	ponds, _ := pondRepo.Get()
+	assert.Len(t, ponds, 1)
+	assert.Equal(t, "Pond 1", ponds[0].Name)
 }
 
-func TestGetFarm(t *testing.T) {
+func TestGetPond(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.GET("/farm", farmHandler.GetFarm)
+	router.GET("/pond", pondHandler.GetPond)
 
 	// Create a test request
-	request, _ := http.NewRequest("GET", "/farm", nil)
+	request, _ := http.NewRequest("GET", "/pond", nil)
 	request.Header.Set("User-Agent", "Test Agent")
 	responseRecorder := httptest.NewRecorder()
 
@@ -102,7 +115,7 @@ func TestGetFarm(t *testing.T) {
 	expectedResponse := gin.H{
 		"code":    http.StatusOK,
 		"status":  "success",
-		"message": "Farm fetched successfully",
+		"message": "Pond fetched successfully",
 		"data":    []interface{}{},
 	}
 	actualResponse := gin.H{}
@@ -118,17 +131,18 @@ func TestGetFarm(t *testing.T) {
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
-func TestGetFarmById(t *testing.T) {
+func TestGetPondById(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.GET("/farm/:id", farmHandler.GetFarmById)
+	router.GET("/pond/:id", pondHandler.GetPondById)
 
 	// Create a farm for testing
 	farmRepo.Create(&model.Farm{
@@ -136,8 +150,15 @@ func TestGetFarmById(t *testing.T) {
 		Name: "Farm 1",
 	})
 
+	// Create a pond for testing
+	pondRepo.Create(&model.Pond{
+		ID:   1,
+		Name: "Pond 1",
+		FarmID: 1,
+	})
+
 	// Create a test request
-	request, _ := http.NewRequest("GET", "/farm/1", nil)
+	request, _ := http.NewRequest("GET", "/pond/1", nil)
 	request.Header.Set("User-Agent", "Test Agent")
 	responseRecorder := httptest.NewRecorder()
 
@@ -151,10 +172,11 @@ func TestGetFarmById(t *testing.T) {
 	expectedResponse := gin.H{
 		"code":    http.StatusOK,
 		"status":  "success",
-		"message": "Farm fetched successfully",
+		"message": "Pond fetched successfully",
 		"data": map[string]interface {}{
 			"id":   1,
-			"name": "Farm 1",
+			"name": "Pond 1",
+			"farm_id": 1,
 		},
 	}
 	actualResponse := gin.H{}
@@ -172,23 +194,28 @@ func TestGetFarmById(t *testing.T) {
 			id := int(idFloat)
 			data["id"] = id
 		}
+		if farmIdFloat, ok := data["farm_id"].(float64); ok {
+			farmId := int(farmIdFloat)
+			data["farm_id"] = farmId
+		}
 	}
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
-func TestUpdateFarm(t *testing.T) {
+func TestUpdatePond(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.PUT("/farm/:id", farmHandler.UpdateFarm)
+	router.PUT("/pond/:id", pondHandler.UpdatePond)
 
 	// Create a farm for testing
 	farmRepo.Create(&model.Farm{
@@ -196,9 +223,16 @@ func TestUpdateFarm(t *testing.T) {
 		Name: "Farm 1",
 	})
 
+	// Create a pond for testing
+	pondRepo.Create(&model.Pond{
+		ID:   1,
+		Name: "Pond 1",
+		FarmID: 1,
+	})
+
 	// Create a test request
-	requestBody := strings.NewReader(`{"name": "Updated Farm"}`)
-	request, _ := http.NewRequest("PUT", "/farm/1", requestBody)
+	requestBody := strings.NewReader(`{"name": "Updated Pond", "farm_id": 1}`)
+	request, _ := http.NewRequest("PUT", "/pond/1", requestBody)
 	request.Header.Set("User-Agent", "Test Agent")
 	request.Header.Set("Content-Type", "application/json")
 	responseRecorder := httptest.NewRecorder()
@@ -213,10 +247,11 @@ func TestUpdateFarm(t *testing.T) {
 	expectedResponse := gin.H{
 		"code":    http.StatusOK,
 		"status":  "success",
-		"message": "Farm updated successfully",
+		"message": "Pond updated successfully",
 		"data": map[string]interface {}{
 			"id":   1,
-			"name": "Updated Farm",
+			"name": "Updated Pond",
+			"farm_id": 1,
 		},
 	}
 	actualResponse := gin.H{}
@@ -234,28 +269,33 @@ func TestUpdateFarm(t *testing.T) {
 			id := int(idFloat)
 			data["id"] = id
 		}
+		if farmIdFloat, ok := data["farm_id"].(float64); ok {
+			farmId := int(farmIdFloat)
+			data["farm_id"] = farmId
+		}
 	}
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResponse, actualResponse)
 
-	// Check if the farm was updated in the repository
-	farms, _ := farmRepo.Get()
-	assert.Len(t, farms, 1)
-	assert.Equal(t, "Updated Farm", farms[0].Name)
+	// Check if the pond was updated in the repository
+	ponds, _ := pondRepo.Get()
+	assert.Len(t, ponds, 1)
+	assert.Equal(t, "Updated Pond", ponds[0].Name)
 }
 
-func TestDeleteFarm(t *testing.T) {
+func TestDeletePond(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.DELETE("/farm/:id", farmHandler.DeleteFarm)
+	router.DELETE("/pond/:id", pondHandler.DeletePond)
 
 	// Create a farm for testing
 	farmRepo.Create(&model.Farm{
@@ -263,8 +303,15 @@ func TestDeleteFarm(t *testing.T) {
 		Name: "Farm 1",
 	})
 
+	// Create a pond for testing
+	pondRepo.Create(&model.Pond{
+		ID:   1,
+		Name: "Pond 1",
+		FarmID: 1,
+	})
+
 	// Create a test request
-	request, _ := http.NewRequest("DELETE", "/farm/1", nil)
+	request, _ := http.NewRequest("DELETE", "/pond/1", nil)
 	request.Header.Set("User-Agent", "Test Agent")
 	responseRecorder := httptest.NewRecorder()
 
@@ -278,7 +325,7 @@ func TestDeleteFarm(t *testing.T) {
 	expectedResponse := gin.H{
 		"code":    http.StatusOK,
 		"status":  "success",
-		"message": "Farm deleted successfully",
+		"message": "Pond deleted successfully",
 	}
 	actualResponse := gin.H{}
 	err := json.Unmarshal(responseRecorder.Body.Bytes(), &actualResponse)
@@ -292,22 +339,23 @@ func TestDeleteFarm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResponse, actualResponse)
 
-	// Check if the farm was deleted from the repository
-	farms, _ := farmRepo.Get()
-	assert.Len(t, farms, 0)
+	// Check if the pond was deleted from the repository
+	ponds, _ := pondRepo.Get()
+	assert.Len(t, ponds, 0)
 }
 
-func TestCreateFarm_NameExists(t *testing.T) {
+func TestCreatePond_NameExists(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.POST("/farm", farmHandler.CreateFarm)
+	router.POST("/pond", pondHandler.CreatePond)
 
 	// Create a farm for testing
 	farmRepo.Create(&model.Farm{
@@ -315,9 +363,16 @@ func TestCreateFarm_NameExists(t *testing.T) {
 		Name: "Farm 1",
 	})
 
+	// Create a pond for testing
+	pondRepo.Create(&model.Pond{
+		ID:   1,
+		Name: "Pond 1",
+		FarmID: 1,
+	})
+
 	// Create a test request
-	requestBody := strings.NewReader(`{"name": "Farm 1"}`)
-	request, _ := http.NewRequest("POST", "/farm", requestBody)
+	requestBody := strings.NewReader(`{"name": "Pond 1", "farm_id": 1}`)
+	request, _ := http.NewRequest("POST", "/pond", requestBody)
 	request.Header.Set("User-Agent", "Test Agent")
 	request.Header.Set("Content-Type", "application/json")
 	responseRecorder := httptest.NewRecorder()
@@ -332,7 +387,7 @@ func TestCreateFarm_NameExists(t *testing.T) {
 	expectedResponse := gin.H{
 		"code":    http.StatusConflict,
 		"status":  "error",
-		"message": "Farm name already exists",
+		"message": "Pond name already exists",
 	}
 	actualResponse := gin.H{}
 	err := json.Unmarshal(responseRecorder.Body.Bytes(), &actualResponse)
@@ -347,20 +402,21 @@ func TestCreateFarm_NameExists(t *testing.T) {
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
-func TestGetFarmById_InvalidParam(t *testing.T) {
+func TestGetPondById_InvalidParam(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.GET("/farm/:id", farmHandler.GetFarmById)
+	router.GET("/pond/:id", pondHandler.GetPondById)
 
 	// Create a test request with an invalid ID param
-	request, _ := http.NewRequest("GET", "/farm/invalid", nil)
+	request, _ := http.NewRequest("GET", "/pond/invalid", nil)
 	request.Header.Set("User-Agent", "Test Agent")
 	responseRecorder := httptest.NewRecorder()
 
@@ -389,21 +445,28 @@ func TestGetFarmById_InvalidParam(t *testing.T) {
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
-func TestUpdateFarm_NotFound(t *testing.T) {
+func TestUpdatePond_NotFound(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.PUT("/farm/:id", farmHandler.UpdateFarm)
+	router.PUT("/pond/:id", pondHandler.UpdatePond)
+
+	// Create a farm for testing
+	farmRepo.Create(&model.Farm{
+		ID:   1,
+		Name: "Farm 1",
+	})
 
 	// Create a test request with a non-existing ID
-	requestBody := strings.NewReader(`{"name": "Updated Farm"}`)
-	request, _ := http.NewRequest("PUT", "/farm/1", requestBody)
+	requestBody := strings.NewReader(`{"name": "Updated Pond", "farm_id": 1}`)
+	request, _ := http.NewRequest("PUT", "/pond/1", requestBody)
 	request.Header.Set("User-Agent", "Test Agent")
 	request.Header.Set("Content-Type", "application/json")
 	responseRecorder := httptest.NewRecorder()
@@ -418,10 +481,11 @@ func TestUpdateFarm_NotFound(t *testing.T) {
 	expectedResponse := gin.H{
 		"code":    http.StatusOK,
 		"status":  "success",
-		"message": "Data Not Found. New farm created successfully",
+		"message": "Data Not Found. New pond created successfully",
 		"data": map[string]interface {}{
 			"id":   1,
-			"name": "Updated Farm",
+			"name": "Updated Pond",
+			"farm_id": 1,
 		},
 	}
 	actualResponse := gin.H{}
@@ -439,28 +503,33 @@ func TestUpdateFarm_NotFound(t *testing.T) {
 			id := int(idFloat)
 			data["id"] = id
 		}
+		if farmIdFloat, ok := data["farm_id"].(float64); ok {
+			farmId := int(farmIdFloat)
+			data["farm_id"] = farmId
+		}
 	}
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResponse, actualResponse)
 
-	// Check if the farm was created in the repository
-	farms, _ := farmRepo.Get()
-	assert.Len(t, farms, 1)
-	assert.Equal(t, "Updated Farm", farms[0].Name)
+	// Check if the pond was created in the repository
+	ponds, _ := pondRepo.Get()
+	assert.Len(t, ponds, 1)
+	assert.Equal(t, "Updated Pond", ponds[0].Name)
 }
 
-func TestDeleteFarm_NotFound(t *testing.T) {
+func TestDeletePond_NotFound(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.DELETE("/farm/:id", farmHandler.DeleteFarm)
+	router.DELETE("/pond/:id", pondHandler.DeletePond)
 
 	// Create a farm for testing
 	farmRepo.Create(&model.Farm{
@@ -468,8 +537,15 @@ func TestDeleteFarm_NotFound(t *testing.T) {
 		Name: "Farm 1",
 	})
 
+	// Create a pond for testing
+	pondRepo.Create(&model.Pond{
+		ID:   1,
+		Name: "Pond 1",
+		FarmID: 1,
+	})
+
 	// Create a test request with a non-existing ID
-	request, _ := http.NewRequest("DELETE", "/farm/2", nil)
+	request, _ := http.NewRequest("DELETE", "/pond/2", nil)
 	request.Header.Set("User-Agent", "Test Agent")
 	responseRecorder := httptest.NewRecorder()
 
@@ -497,26 +573,27 @@ func TestDeleteFarm_NotFound(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResponse, actualResponse)
 
-	// Check if the farm was not deleted from the repository
-	farms, _ := farmRepo.Get()
-	assert.Len(t, farms, 1)
+	// Check if the pond was not deleted from the repository
+	ponds, _ := pondRepo.Get()
+	assert.Len(t, ponds, 1)
 }
 
-func TestCreateFarm_InvalidPayload(t *testing.T) {
+func TestCreatePond_InvalidPayload(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.POST("/farm", farmHandler.CreateFarm)
+	router.POST("/pond", pondHandler.CreatePond)
 
 	// Create a test request with an invalid payload (missing name field)
 	requestBody := strings.NewReader(`{}`)
-	request, _ := http.NewRequest("POST", "/farm", requestBody)
+	request, _ := http.NewRequest("POST", "/pond", requestBody)
 	request.Header.Set("User-Agent", "Test Agent")
 	request.Header.Set("Content-Type", "application/json")
 	responseRecorder := httptest.NewRecorder()
@@ -546,20 +623,21 @@ func TestCreateFarm_InvalidPayload(t *testing.T) {
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
-func TestGetFarmById_NotFound(t *testing.T) {
+func TestGetPondById_NotFound(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.GET("/farm/:id", farmHandler.GetFarmById)
+	router.GET("/pond/:id", pondHandler.GetPondById)
 
 	// Create a test request with a non-existing ID
-	request, _ := http.NewRequest("GET", "/farm/1", nil)
+	request, _ := http.NewRequest("GET", "/pond/1", nil)
 	request.Header.Set("User-Agent", "Test Agent")
 	responseRecorder := httptest.NewRecorder()
 
@@ -588,21 +666,22 @@ func TestGetFarmById_NotFound(t *testing.T) {
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
-func TestUpdateFarm_InvalidPayload(t *testing.T) {
+func TestUpdatePond_InvalidPayload(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.PUT("/farm/:id", farmHandler.UpdateFarm)
+	router.PUT("/pond/:id", pondHandler.UpdatePond)
 
 	// Create a test request with an invalid payload (missing name field)
 	requestBody := strings.NewReader(`{}`)
-	request, _ := http.NewRequest("PUT", "/farm/1", requestBody)
+	request, _ := http.NewRequest("PUT", "/pond/1", requestBody)
 	request.Header.Set("User-Agent", "Test Agent")
 	request.Header.Set("Content-Type", "application/json")
 	responseRecorder := httptest.NewRecorder()
@@ -632,20 +711,21 @@ func TestUpdateFarm_InvalidPayload(t *testing.T) {
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
-func TestDeleteFarm_InvalidParam(t *testing.T) {
+func TestDeletePond_InvalidParam(t *testing.T) {
 	// Create mock repositories
 	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
 	logRepo := repository.NewMockLogRepository()
 
 	// Create handler with mock repositories
-	farmHandler := handler.NewFarmHandler(farmRepo, logRepo)
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
 
 	// Create a Gin router and set up the handler route
 	router := gin.Default()
-	router.DELETE("/farm/:id", farmHandler.DeleteFarm)
+	router.DELETE("/pond/:id", pondHandler.DeletePond)
 
 	// Create a test request with an invalid ID param
-	request, _ := http.NewRequest("DELETE", "/farm/invalid", nil)
+	request, _ := http.NewRequest("DELETE", "/pond/invalid", nil)
 	request.Header.Set("User-Agent", "Test Agent")
 	responseRecorder := httptest.NewRecorder()
 
@@ -660,6 +740,96 @@ func TestDeleteFarm_InvalidParam(t *testing.T) {
 		"code":    http.StatusBadRequest,
 		"status":  "error",
 		"message": "Invalid request param",
+	}
+	actualResponse := gin.H{}
+	err := json.Unmarshal(responseRecorder.Body.Bytes(), &actualResponse)
+
+	// Convert code to int if it exists
+	if codeFloat, ok := actualResponse["code"].(float64); ok {
+		code := int(codeFloat)
+		actualResponse["code"] = code
+	}
+	
+	assert.NoError(t, err)
+	assert.Equal(t, expectedResponse, actualResponse)
+}
+
+func TestCreatePond_FarmDataNotFound(t *testing.T) {
+	// Create mock repositories
+	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
+	logRepo := repository.NewMockLogRepository()
+
+	// Create handler with mock repositories
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
+
+	// Create a Gin router and set up the handler route
+	router := gin.Default()
+	router.POST("/pond", pondHandler.CreatePond)
+
+	// Create a test request with a non-existing Farm ID
+	requestBody := strings.NewReader(`{"name": "Pond 1", "farm_id": 1}`)
+	request, _ := http.NewRequest("POST", "/pond", requestBody)
+	request.Header.Set("User-Agent", "Test Agent")
+	request.Header.Set("Content-Type", "application/json")
+	responseRecorder := httptest.NewRecorder()
+
+	// Perform the request
+	router.ServeHTTP(responseRecorder, request)
+
+	// Check the response status code
+	assert.Equal(t, http.StatusNotFound, responseRecorder.Code)
+
+	// Check the response body
+	expectedResponse := gin.H{
+		"code":    http.StatusNotFound,
+		"status":  "error",
+		"message": "Farm Data Not Found",
+	}
+	actualResponse := gin.H{}
+	err := json.Unmarshal(responseRecorder.Body.Bytes(), &actualResponse)
+
+	// Convert code to int if it exists
+	if codeFloat, ok := actualResponse["code"].(float64); ok {
+		code := int(codeFloat)
+		actualResponse["code"] = code
+	}
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedResponse, actualResponse)
+}
+
+func TestUpdatePond_FarmDataNotFound(t *testing.T) {
+	// Create mock repositories
+	farmRepo := repository.NewMockFarmRepository()
+	pondRepo := repository.NewMockPondRepository()
+	logRepo := repository.NewMockLogRepository()
+
+	// Create handler with mock repositories
+	pondHandler := handler.NewPondHandler(pondRepo, farmRepo, logRepo)
+
+	// Create a Gin router and set up the handler route
+	router := gin.Default()
+	router.PUT("/pond/:id", pondHandler.UpdatePond)
+
+	// Create a test request with a non-existing Farm ID
+	requestBody := strings.NewReader(`{"name": "Updated Pond", "farm_id": 1}`)
+	request, _ := http.NewRequest("PUT", "/pond/1", requestBody)
+	request.Header.Set("User-Agent", "Test Agent")
+	request.Header.Set("Content-Type", "application/json")
+	responseRecorder := httptest.NewRecorder()
+
+	// Perform the request
+	router.ServeHTTP(responseRecorder, request)
+
+	// Check the response status code
+	assert.Equal(t, http.StatusNotFound, responseRecorder.Code)
+
+	// Check the response body
+	expectedResponse := gin.H{
+		"code":    http.StatusNotFound,
+		"status":  "error",
+		"message": "Farm Data Not Found",
 	}
 	actualResponse := gin.H{}
 	err := json.Unmarshal(responseRecorder.Body.Bytes(), &actualResponse)

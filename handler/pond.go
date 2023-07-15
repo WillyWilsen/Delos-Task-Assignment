@@ -68,7 +68,7 @@ func (h *PondHandler) CreatePond(c *gin.Context) {
 	// Farm data not found
 	farm, _ := h.farmRepository.GetById(pond.FarmID)
     if farm == nil {
-        c.JSON(http.StatusInternalServerError, gin.H{
+        c.JSON(http.StatusNotFound, gin.H{
             "code": http.StatusNotFound,
             "status": "error",
             "message": "Farm Data Not Found",
@@ -229,7 +229,7 @@ func (h *PondHandler) UpdatePond(c *gin.Context) {
 	// Farm data not found
 	farm, _ := h.farmRepository.GetById(pondPayload.FarmID)
     if farm == nil {
-        c.JSON(http.StatusInternalServerError, gin.H{
+        c.JSON(http.StatusNotFound, gin.H{
             "code": http.StatusNotFound,
             "status": "error",
             "message": "Farm Data Not Found",
